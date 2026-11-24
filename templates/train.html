@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Train & Test • MoodPulse</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+  <style>
+    .train-container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .train-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 768px) { .train-grid { grid-template-columns: 1fr; } }
+
+    .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .metric-label { color: var(--text-muted); font-weight: 500; }
+    .metric-value { font-weight: 700; color: var(--primary); }
+
+    .progress-bar-wrap { width: 100%; height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 4px 0; }
+    .progress-bar-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+
+    .log-box { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md);
+               padding: 12px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;
+               white-space: pre-wrap; color: var(--text-muted); min-height: 60px; }
+
+    .class-row { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 4px 0; }
+    .class-label { width: 70px; font-weight: 600; text-transform: capitalize; }
+    .class-bar { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .class-fill { height: 100%; border-radius: 999px; }
+    .class-val { width: 50px; text-align: right; font-weight: 600; color: var(--text-muted); }
+
+    .epoch-input { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .epoch-input input { width: 80px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+                         font-size: 14px; text-align: center; }
+    .epoch-input label { font-size: 13px; font-weight: 600; }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    .history-table th, .history-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    .history-table th { font-weight: 600; color: var(--text-muted); background: var(--surface-alt); }
+
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top: 2px solid transparent;
+               border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="theme-calm">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-avatar">🧠</span>
+      <div>
+        <h1 class="brand-title">MoodPulse</h1>
+        <p class="brand-subtitle">Model Training & Testing</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="/" class="btn btn-outline">← Back to App</a>
+      <span class="hci-pill">
+        <span class="pill-dot"></span>
+        <span>{{ username }}</span>
+      </span>
+      <a href="/logout" class="btn btn-sm btn-outline">Logout</a>
+    </div>
+  </header>
+
+  <div class="train-container">
+
+    <!-- TRAINING & TESTING CARDS -->
+    <div class="train-grid">
+
+      <!-- TRAIN CARD -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">🏋️ Train Model</h2>
+          <span class="badge" id="train-status">Ready</span>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Train the CNN emotion classifier. The model learns to recognize 7 facial expressions
+          (angry, disgust, fear, happy, neutral, sad, surprise).
+        </p>
+
+        <div class="epoch-input">
+          <label for="epochs">Epochs:</label>
+          <input type="number" id="epochs" value="10" min="1" max="50" />
+          <small style="color: var(--text-muted); font-size: 11px;">1–50 epochs</small>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="train-btn" style="width: 100%;">
+          ▶ Start Training
+        </button>
+
+        <div id="train-results" style="margin-top: 16px; display: none;">
+          <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Training Results</h4>
+          <div id="train-metrics"></div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <h4 style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Training Log</h4>
+          <div class="log-box" id="train-log">Waiting to start training...</div>
+        </div>
+      </section>
+
+      <!-- TEST CARD -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">🧪 Test Model</h2>
+          <span class="badge" id="test-status">Ready</span>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Evaluate the trained model on test data. Shows overall accuracy and per-class breakdown.
+        </p>
+
+        <button type="button" class="btn btn-primary" id="test-btn" style="width: 100%; margin-bottom: 16px;">
+          🔬 Run Testing
+        </button>
+
+        <div id="test-results" style="display: none;">
+          <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Test Results</h4>
+          <div id="test-metrics"></div>
+
+          <h4 style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 14px 0 8px;">Per-Class Accuracy</h4>
+          <div id="class-breakdown"></div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <h4 style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Test Log</h4>
+          <div class="log-box" id="test-log">Waiting to run testing...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- HISTORY CARD -->
+    <section class="card" style="margin-bottom: 20px;">
+      <div class="card-header">
+        <h2 class="card-title">📊 Training & Testing History</h2>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Recent Training Runs</h4>
+          <div id="train-history"><p style="font-size: 12px; color: var(--text-muted);">Loading...</p></div>
+        </div>
+        <div>
+          <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Recent Test Runs</h4>
+          <div id="test-history"><p style="font-size: 12px; color: var(--text-muted);">Loading...</p></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    const trainBtn = document.getElementById("train-btn");
+    const testBtn = document.getElementById("test-btn");
+    const trainLog = document.getElementById("train-log");
+    const testLog = document.getElementById("test-log");
+    const trainResults = document.getElementById("train-results");
+    const testResults = document.getElementById("test-results");
+    const trainMetrics = document.getElementById("train-metrics");
+    const testMetrics = document.getElementById("test-metrics");
+    const classBreakdown = document.getElementById("class-breakdown");
+    const trainStatus = document.getElementById("train-status");
+    const testStatus = document.getElementById("test-status");
+
+    const COLORS = {
+      angry: "#b91c1c", disgust: "#059669", fear: "#7c3aed",
+      happy: "#ea580c", neutral: "#4f46e5", sad: "#2563eb", surprise: "#d97706"
+    };
+
+    // --- TRAIN ---
+    trainBtn.addEventListener("click", async () => {
+      const epochs = parseInt(document.getElementById("epochs").value) || 10;
+      trainBtn.disabled = true;
+      trainBtn.innerHTML = '<span class="spinner"></span> Training...';
+      trainStatus.textContent = "Training...";
+      trainStatus.classList.add("active");
+      trainLog.textContent = `Starting training with ${epochs} epochs...\n`;
+      trainResults.style.display = "none";
+
+      try {
+        const res = await fetch("/api/train", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ epochs }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          trainStatus.textContent = "Complete ✓";
+          trainLog.textContent += `\n✓ Training complete!\n`;
+          trainLog.textContent += `  Data source: ${data.data_source}\n`;
+          trainLog.textContent += `  Total samples: ${data.total_samples}\n`;
+          trainLog.textContent += `  Train/Val split: ${data.train_samples}/${data.val_samples}\n`;
+          trainLog.textContent += `  Final train accuracy: ${data.train_accuracy}%\n`;
+          trainLog.textContent += `  Final val accuracy: ${data.val_accuracy}%\n`;
+          trainLog.textContent += `  Train loss: ${data.train_loss}\n`;
+          trainLog.textContent += `  Val loss: ${data.val_loss}\n`;
+          trainLog.textContent += `  Model saved: ${data.model_path}\n`;
+
+          trainMetrics.innerHTML = `
+            <div class="metric-row"><span class="metric-label">Data Source</span><span class="metric-value">${data.data_source}</span></div>
+            <div class="metric-row"><span class="metric-label">Epochs</span><span class="metric-value">${data.epochs}</span></div>
+            <div class="metric-row"><span class="metric-label">Train Accuracy</span><span class="metric-value">${data.train_accuracy}%</span></div>
+            <div class="metric-row"><span class="metric-label">Val Accuracy</span><span class="metric-value">${data.val_accuracy}%</span></div>
+            <div class="metric-row"><span class="metric-label">Train Loss</span><span class="metric-value">${data.train_loss}</span></div>
+            <div class="metric-row"><span class="metric-label">Val Loss</span><span class="metric-value">${data.val_loss}</span></div>
+            <div class="metric-row"><span class="metric-label">Total Samples</span><span class="metric-value">${data.total_samples}</span></div>
+          `;
+          trainResults.style.display = "block";
+          loadHistory();
+        } else {
+          trainStatus.textContent = "Error";
+          trainLog.textContent += `\n✕ Error: ${data.error}\n`;
+        }
+      } catch (err) {
+        trainStatus.textContent = "Error";
+        trainLog.textContent += `\n✕ Request failed: ${err.message}\n`;
+      } finally {
+        trainBtn.disabled = false;
+        trainBtn.textContent = "▶ Start Training";
+      }
+    });
+
+    // --- TEST ---
+    testBtn.addEventListener("click", async () => {
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<span class="spinner"></span> Testing...';
+      testStatus.textContent = "Testing...";
+      testStatus.classList.add("active");
+      testLog.textContent = "Running model evaluation...\n";
+      testResults.style.display = "none";
+
+      try {
+        const res = await fetch("/api/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          testStatus.textContent = "Complete ✓";
+          testLog.textContent += `\n✓ Testing complete!\n`;
+          testLog.textContent += `  Data source: ${data.data_source}\n`;
+          testLog.textContent += `  Test accuracy: ${data.test_accuracy}%\n`;
+          testLog.textContent += `  Test loss: ${data.test_loss}\n`;
+          testLog.textContent += `  Total samples: ${data.total_samples}\n`;
+          testLog.textContent += `  Correct predictions: ${data.correct_predictions}/${data.total_samples}\n`;
+
+          testMetrics.innerHTML = `
+            <div class="metric-row"><span class="metric-label">Data Source</span><span class="metric-value">${data.data_source}</span></div>
+            <div class="metric-row"><span class="metric-label">Test Accuracy</span><span class="metric-value">${data.test_accuracy}%</span></div>
+            <div class="metric-row"><span class="metric-label">Test Loss</span><span class="metric-value">${data.test_loss}</span></div>
+            <div class="metric-row"><span class="metric-label">Correct</span><span class="metric-value">${data.correct_predictions} / ${data.total_samples}</span></div>
+          `;
+
+          // Per-class bars
+          classBreakdown.innerHTML = "";
+          if (data.per_class_accuracy) {
+            for (const [label, acc] of Object.entries(data.per_class_accuracy)) {
+              const color = COLORS[label] || "var(--primary)";
+              classBreakdown.innerHTML += `
+                <div class="class-row">
+                  <span class="class-label">${label}</span>
+                  <div class="class-bar"><div class="class-fill" style="width: ${acc}%; background: ${color};"></div></div>
+                  <span class="class-val">${acc}%</span>
+                </div>
+              `;
+            }
+          }
+          testResults.style.display = "block";
+          loadHistory();
+        } else {
+          testStatus.textContent = "Error";
+          testLog.textContent += `\n✕ Error: ${data.error}\n`;
+        }
+      } catch (err) {
+        testStatus.textContent = "Error";
+        testLog.textContent += `\n✕ Request failed: ${err.message}\n`;
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = "🔬 Run Testing";
+      }
+    });
+
+    // --- HISTORY ---
+    async function loadHistory() {
+      try {
+        const res = await fetch("/api/model-info");
+        const data = await res.json();
+
+        const trainHistEl = document.getElementById("train-history");
+        const testHistEl = document.getElementById("test-history");
+
+        if (data.training_history && data.training_history.length > 0) {
+          let html = '<table class="history-table"><tr><th>Date</th><th>Epochs</th><th>Train Acc</th><th>Val Acc</th></tr>';
+          data.training_history.forEach(r => {
+            html += `<tr><td>${r.created_at}</td><td>${r.epochs}</td><td>${r.train_accuracy}%</td><td>${r.val_accuracy}%</td></tr>`;
+          });
+          html += "</table>";
+          trainHistEl.innerHTML = html;
+        } else {
+          trainHistEl.innerHTML = '<p style="font-size: 12px; color: var(--text-muted);">No training runs yet.</p>';
+        }
+
+        if (data.testing_history && data.testing_history.length > 0) {
+          let html = '<table class="history-table"><tr><th>Date</th><th>Accuracy</th><th>Correct</th><th>Total</th></tr>';
+          data.testing_history.forEach(r => {
+            html += `<tr><td>${r.created_at}</td><td>${r.test_accuracy}%</td><td>${r.correct_predictions}</td><td>${r.total_samples}</td></tr>`;
+          });
+          html += "</table>";
+          testHistEl.innerHTML = html;
+        } else {
+          testHistEl.innerHTML = '<p style="font-size: 12px; color: var(--text-muted);">No test runs yet.</p>';
+        }
+      } catch {}
+    }
+
+    loadHistory();
+  })();
+  </script>
+
+</body>
+</html>

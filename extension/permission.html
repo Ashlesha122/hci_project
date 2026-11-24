@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enable Camera • MoodPulse</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 36px 32px;
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+      border: 1px solid #e2e8f0;
+    }
+    .icon { font-size: 48px; margin-bottom: 12px; }
+    h1 { font-size: 22px; font-weight: 700; color: #1e1b4b; margin-bottom: 8px; }
+    p { font-size: 14px; color: #64748b; line-height: 1.5; margin-bottom: 22px; }
+    .btn {
+      background: #4f46e5;
+      color: #ffffff;
+      border: none;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .btn:hover { background: #4338ca; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .success-box {
+      display: none;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 12px;
+      padding: 16px;
+      color: #065f46;
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .error-box {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      padding: 14px;
+      color: #991b1b;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 14px;
+    }
+    .tip {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 16px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📷</div>
+    <h1>Allow Camera Access</h1>
+    <p id="prompt-desc">
+      Google Chrome requires you to grant camera access once on this page so MoodPulse can read your facial expressions in the browser side panel.
+    </p>
+
+    <button type="button" class="btn" id="request-btn">
+      Allow Camera Access
+    </button>
+
+    <div class="success-box" id="success-box">
+      🎉 Camera permission granted!<br />
+      <span style="font-weight: 400; font-size: 13px;">
+        You can close this tab and return to your MoodPulse side panel.
+      </span>
+    </div>
+
+    <div class="error-box" id="error-box">
+      Camera permission was blocked. Please click the camera/lock icon in your browser address bar above, choose <strong>"Always allow"</strong>, and refresh this page.
+    </div>
+
+    <p class="tip">Your video feed is processed privately and never uploaded to any cloud.</p>
+  </div>
+
+  <script src="permission.js"></script>
+</body>
+</html>

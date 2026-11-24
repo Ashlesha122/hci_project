@@ -1,0 +1,8 @@
+deepface>=0.0.93
+tensorflow>=2.16
+tf-keras>=2.16
+opencv-python-headless>=4.8
+numpy>=1.26
+pillow>=10.0
+flask>=3.0
+bcrypt>=4.0

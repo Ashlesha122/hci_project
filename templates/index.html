@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MoodPulse • Live Face Mood Reader &amp; Adaptive Workspace</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body class="theme-calm">
+
+  <!-- ===================================================================== -->
+  <!-- TOP HEADER / APP BAR                                                  -->
+  <!-- ===================================================================== -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-avatar" id="brand-avatar">😊</span>
+      <div>
+        <h1 class="brand-title">MoodPulse</h1>
+        <p class="brand-subtitle">Smart Face Mood Reader &amp; Adaptive Workspace</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Active Adaptive State Pill -->
+      <div class="hci-pill" id="hci-mode-pill" title="Current workspace vibe">
+        <span class="pill-dot"></span>
+        <span id="hci-mode-text">Ready</span>
+      </div>
+
+      <!-- Adaptive UI Toggle -->
+      <label class="toggle-control" title="Colors smoothly shift to match your mood">
+        <input type="checkbox" id="adaptive-toggle" checked />
+        <span class="toggle-slider"></span>
+        <span class="toggle-label">Auto Colors</span>
+      </label>
+
+      <!-- Browser Extension Trigger (Few, Simple Steps) -->
+      <button type="button" class="btn btn-outline" id="open-ext-btn" title="Add MoodPulse to your Chrome or Edge browser">
+        🧩 Browser Extension
+      </button>
+
+      <!-- User Greeting & Logout -->
+      <div class="hci-pill" style="font-weight: 600;">
+        <span>👤 {{ username }}</span>
+      </div>
+      <a href="/logout" class="btn btn-sm btn-outline" title="Sign out of your account">Logout</a>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN WORKSPACE GRID                                                   -->
+  <!-- ===================================================================== -->
+  <main class="app-main">
+
+    <!-- USER-FRIENDLY WELCOME & QUICK STEPS -->
+    <div class="welcome-banner">
+      <div class="welcome-text">
+        <h2>Welcome back, {{ username }}! 👋</h2>
+        <p>Your real-time mood companion. Press <strong>Start Check-in</strong> below, face your screen, and let the app adapt your ambiance.</p>
+      </div>
+      <div class="quick-steps">
+        <div class="q-step"><span class="q-num">1</span> Click Start Check-in</div>
+        <div class="q-step"><span class="q-num">2</span> See Live Mood</div>
+        <div class="q-step"><span class="q-num">3</span> Record &amp; Relax</div>
+      </div>
+    </div>
+
+    <!-- RECORD CONFIRMATION TOAST -->
+    <div id="save-alert" class="save-toast" style="display: none;"></div>
+
+    <div class="grid-container">
+
+      <!-- LEFT COLUMN: WEBCAM FEED -->
+      <section class="card camera-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 class="card-title">📹 Your Camera</h2>
+            <span class="badge" id="camera-status-badge">Ready to start</span>
+          </div>
+        </div>
+
+        <div class="video-container">
+          <video id="webcam" autoplay playsinline muted></video>
+          <canvas id="overlay-canvas"></canvas>
+          <div class="video-placeholder" id="placeholder">
+            <span class="placeholder-icon">📷</span>
+            <p style="font-weight: 600;">Camera is idle</p>
+            <small>Click <strong>Start Check-in</strong> below to see your mood</small>
+          </div>
+        </div>
+
+        <div class="camera-controls" style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" id="toggle-camera-btn" class="btn btn-primary" style="font-size: 14px; padding: 10px 20px;">
+            ▶ Start Check-in
+          </button>
+          <button type="button" id="record-mood-btn" class="btn btn-secondary" style="font-size: 13px; padding: 10px 16px;">
+            💾 Record This Mood
+          </button>
+        </div>
+
+        <div class="ergonomic-nudge">
+          <span class="nudge-icon">💡</span>
+          <p id="ergonomic-text">{{ initial_tip | safe if initial_tip else "<strong>Desk Tip:</strong> Unclench your jaw and gently drop your shoulders away from your ears." }}</p>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: CURRENT MOOD & FRIENDLY FEEDBACK -->
+      <section class="card emotion-card">
+        <div class="card-header">
+          <h2 class="card-title">✨ Detected Mood &amp; Care</h2>
+          <span class="confidence-badge" id="confidence-badge" hidden></span>
+        </div>
+
+        <!-- Dominant State Display -->
+        <div class="primary-emotion-banner">
+          <span class="emotion-emoji" id="current-emoji">😊</span>
+          <div class="emotion-details">
+            <h3 class="emotion-label" id="current-label">Ready for Check-in</h3>
+            <p class="emotion-guidance" id="current-guidance">
+              Turn on the camera to see your facial mood, personalized tips, and calming workspace adjustments.
+            </p>
+          </div>
+        </div>
+
+        <!-- Human-in-the-Loop Feedback (Friendly & Simple) -->
+        <div class="hci-feedback-box">
+          <p class="feedback-heading">🎯 Does this match how you feel right now? Tap to confirm &amp; record:</p>
+          <div class="feedback-actions">
+            <button type="button" class="btn btn-sm btn-confirm" id="confirm-yes-btn">
+              ✓ Yes, accurate! (Record)
+            </button>
+            <span class="or-separator">or tap your actual feeling:</span>
+            <div class="emotion-correction-chips">
+              <button type="button" class="chip-btn" data-mood="happy">😄 Happy</button>
+              <button type="button" class="chip-btn" data-mood="calm">🌿 Calm</button>
+              <button type="button" class="chip-btn" data-mood="focused">🎯 Focused</button>
+              <button type="button" class="chip-btn" data-mood="excited">⚡ Excited</button>
+              <button type="button" class="chip-btn" data-mood="surprise">😲 Surprised</button>
+              <button type="button" class="chip-btn" data-mood="tired">🥱 Tired</button>
+              <button type="button" class="chip-btn" data-mood="stressed">😣 Stressed</button>
+              <button type="button" class="chip-btn" data-mood="sad">😢 Down</button>
+              <button type="button" class="chip-btn" data-mood="frustrated">😤 Frustrated</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Emotion Confidence Distribution -->
+        <div class="breakdown-section">
+          <h4 class="breakdown-title">📊 Emotion Breakdown (How your face appears)</h4>
+          <div class="distribution-bars" id="distribution-bars">
+            <div class="empty-dist" id="empty-dist">
+              Start check-in to see your live emotion percentages.
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- LOWER ROW: GUIDED PACED BREATHING & SESSION MOOD TIMELINE -->
+    <div class="grid-container grid-bottom">
+
+      <!-- GUIDED PACED BREATHING -->
+      <section class="card breathing-card" id="breathing-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 class="card-title">🫁 60-Second Breathing Break</h2>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline" id="toggle-pacer-btn">
+            Start 60s Breather
+          </button>
+        </div>
+
+        <div class="breathing-widget">
+          <div class="pacer-circle-wrap">
+            <div class="pacer-circle" id="pacer-circle">
+              <span class="pacer-action" id="pacer-action">Inhale</span>
+              <span class="pacer-counter" id="pacer-counter">4s</span>
+            </div>
+          </div>
+          <div class="pacer-text-wrap">
+            <h3 id="pacer-title">Box Breathing (4-4-4)</h3>
+            <p id="pacer-desc">
+              Whenever you feel stressed, tense, or fatigued, take 60 seconds with this breathing guide to reset your nervous system.
+            </p>
+            <div class="pacer-steps">
+              <span class="step-chip active" id="step-inhale">1. Inhale 4s</span>
+              <span class="step-chip" id="step-hold">2. Hold 4s</span>
+              <span class="step-chip" id="step-exhale">3. Exhale 4s</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SESSION MOOD TIMELINE -->
+      <section class="card timeline-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 class="card-title">🕒 Your Saved Mood Timeline</h2>
+            <span class="stat-highlight" id="alignment-stat">Loading history...</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline" id="clear-history-btn" title="Clear all recorded history">
+            Clear Timeline
+          </button>
+        </div>
+        <p class="timeline-desc">Your permanently recorded moods and feedback:</p>
+        <div class="history-timeline" id="history-timeline">
+          <div class="timeline-empty" id="timeline-empty">No check-ins saved yet. Turn on camera and tap "Record This Mood" or confirm your mood above!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- BROWSER EXTENSION MODAL: 2 EASY OPTIONS                               -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" id="ext-modal" hidden>
+    <div class="modal-dialog" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">🧩</span>
+          <h2 class="modal-title">Add MoodPulse to Chrome or Edge</h2>
+        </div>
+        <button type="button" class="close-btn" id="close-ext-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Keep MoodPulse right in your browser's side panel on any website:
+        </p>
+
+        <!-- STEP 1: DOWNLOAD -->
+        <div style="background: var(--surface-alt); border: 2px dashed var(--primary); border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 16px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--primary);">
+            Step 1: Download Extension
+          </h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+            Ready to load with side-panel &amp; live emotion tracker.
+          </p>
+          <a href="/api/download-extension" class="btn btn-primary" id="download-ext-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 18px;">
+            ⬇️ Download Extension (.zip)
+          </a>
+        </div>
+
+        <!-- STEP 2: LOAD INTO BROWSER -->
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+          <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+            Step 2: Add in Chrome / Edge (15 Seconds)
+          </h3>
+          <ol style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-main); line-height: 1.7;">
+            <li>Extract the downloaded <code>moodpulse-extension.zip</code> file.</li>
+            <li>In browser address bar, open: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 11px;">chrome://extensions</code></li>
+            <li>Turn <strong>ON</strong> <em>Developer mode</em> (toggle at top right).</li>
+            <li>Click <strong>Load unpacked</strong> and select the unzipped folder!</li>
+          </ol>
+        </div>
+
+        <!-- CONNECTION CHECK -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-alt); padding: 10px 14px; border-radius: 8px;">
+          <button type="button" class="btn btn-sm btn-outline" id="test-connection-btn">
+            🔌 Test Connection
+          </button>
+          <span id="connection-status-text" style="font-size: 12px; font-weight: 600;"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-primary btn-sm" id="modal-got-it-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="hidden-capture-canvas" hidden></canvas>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

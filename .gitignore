@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+.venv/
+env/
+
+# Flask & Environment
+instance/
+.flaskenv
+.env
+
+# DeepFace / model weights cache
+.deepface/
+
+# Uploaded images (temporary)
+uploads/*
+!uploads/.gitkeep
+
+# Local mood databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+data/*.db
+data/*.db-journal
+
+# Reports & Report Assets
+*.docx
+*.pdf
+report_assets/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
